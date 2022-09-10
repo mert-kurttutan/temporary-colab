@@ -254,7 +254,7 @@ class BaseRBM(EnergyBasedModel):
             v0_states = input
         elif self._strategy == "PCD":
             if self._v_samples is None:
-                self._v_samples = torch.rand(N, self.n_vis)
+                self._v_samples = torch.rand(N, self.n_vis, device=self._weight.device)
 
             
             if v_samples is None:

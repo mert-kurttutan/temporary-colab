@@ -1,7 +1,9 @@
+from __future__ import annotations
 import numpy as np
 import torch
 import torch.nn as nn
 import math
+from torch.distributions import bernoulli, multinomial, normal
 
 from ..base import DtypeMixin
 
@@ -25,12 +27,12 @@ class BaseLayer(DtypeMixin):
         """
         raise NotImplementedError('`activation` is not implemented')
 
-    def _sample(self, p):
+    def _sample(self, p) -> bernoulli.Bernoulli | multinomial.Multinomial | normal.Normal:
         """Sample states of the units by combining output from 2 previous functions."""
         raise NotImplementedError('`sample` is not implemented')
 
     def sample(self, p):
-        return self._sample(p).type(self._torch_dtype)
+        return self._sample(p).sample().type(self._torch_dtype)
 
 class BernoulliLayer(BaseLayer):
     def __init__(self, *args, **kwargs):
@@ -42,7 +44,7 @@ class BernoulliLayer(BaseLayer):
     
 
     def _sample(self, means):
-        return torch.bernoulli(means)
+        return bernoulli.Bernoulli(probs=means)
     
 
 
@@ -56,7 +58,7 @@ class MultinomialLayer(BaseLayer):
 
     def _sample(self, means):
         probs = (means / means.sum()).type(torch.float)
-        return torch.multinomial(input=probs, num_samples=self.n_samples, replacement=True)
+        return multinomial.Multinomial(probs=probs, total_count=self.n_samples)
 
 
 class GaussianLayer(BaseLayer):
@@ -69,4 +71,4 @@ class GaussianLayer(BaseLayer):
         return t
 
     def _sample(self, means):
-        return torch.normal(mean=means, std=self.sigma.type(self._torch_dtype))
+        return normal.Normal(loc=means, scale=self.sigma.type(self._torch_dtype))

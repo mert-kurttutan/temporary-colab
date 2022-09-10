@@ -3,7 +3,10 @@
 from .ebm import (EnergyBasedModel)
 
 from .rbm import (
-    BaseRBM
+    BaseRBM,
+    BernoulliRBM,
+    MultinomialRBM,
+    GaussianRBM,
 )
 
 # from rbm import ()
