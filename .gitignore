@@ -154,8 +154,8 @@ cython_debug/
 
 
 # compressed data files
-*-ubyte
-*-ubyte.gz
+# *-ubyte
+# *-ubyte.gz
 
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
