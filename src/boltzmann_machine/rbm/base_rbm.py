@@ -45,7 +45,7 @@ class BaseRBM(EnergyBasedModel):
         n_gibbs_steps: int | list[int] = 1,
         sample_v_states: bool = False, 
         sample_h_states: bool = True, 
-        dropout_rate: float = None,
+        p_dropout: float = None,
         sparsity_target: float = 0.1, 
         sparsity_cost: float = 0., 
         sparsity_damping: float = 0.9,
@@ -58,6 +58,7 @@ class BaseRBM(EnergyBasedModel):
         display_hidden_activations=0, 
         v_shape=(28, 28),
         model_path='rbm_model/', 
+        strategy: str = "CD",
         *args: Any, 
         **kwargs: Any,
     ):
@@ -113,7 +114,7 @@ class BaseRBM(EnergyBasedModel):
         # these parameter to False (default).
         self.sample_h_states = sample_h_states
         self.sample_v_states = sample_v_states
-        self._dropout_rate = dropout_rate
+        self._p_dropout = p_dropout
 
         self.sparsity_target = sparsity_target
         self.sparsity_cost = sparsity_cost
@@ -128,7 +129,12 @@ class BaseRBM(EnergyBasedModel):
 
 
         self.verbose = verbose
+        self._strategy = strategy
         self.save_after_each_epoch = save_after_each_epoch
+
+
+
+        self._v_samples = None
 
         assert self.n_hid >= display_filters
         self.display_filters = display_filters
@@ -235,28 +241,59 @@ class BaseRBM(EnergyBasedModel):
         return cost
     
 
-    def forward(self, input):
+    def forward(self, input, v_samples = None):
 
-        if self.dropout is not None:
-            v0_states = F.dropout(input, p=self._dropout_rate, training=self.training)
+        N = input.size()[0]
+
+        
+
+        if self._p_dropout is not None:
+            input = F.dropout(input, p=self._p_dropout, training=self.training)
+        
+        if self._strategy == "CD":
+            v0_states = input
+        elif self._strategy == "PCD":
+            if self._v_samples is None:
+                self._v_samples = torch.rand(N, self.n_vis)
+
+            
+            if v_samples is None:
+                v0_states = self._v_samples[:N]
+            else:
+                v0_states = v_samples
+            
+        else:
+            raise ValueError("Invalid RBM training strategy...")
+
+        
+        # calculate positive phase hidden means
+        # input is different from v0_states in PCD
+        _, h0_means = self._h_given_v(input)
 
 
-        h0_states, h0_means = self._h_given_v(v0_states)
-
-        v_states, v_means, _, h_means = self.run_gibbs_chain(h0_states)
+        # run gibbs chain
+        h0_states, _ = self._h_given_v(v0_states)
+        v_states, v_means, h_states, h_means = self.run_gibbs_chain(h0_states)
 
 
 
         if self.training:
-            N = v0_states.size()[0]
 
-            dW_positive = torch.matmul(h0_means.t(), v0_states) 
+            dW_positive = torch.matmul(h0_means.t(), input) 
             dW_negative = torch.matmul(h_means.t(), v_states)
             
             self._weight.grad = - (dW_positive - dW_negative) / N 
 
-            self._v_bias.grad = - torch.mean(v0_states - v_states, dim=0)
-            self._h_bias.grad = - torch.mean(h0_means- h_means, dim=0)
+            self._v_bias.grad = - torch.mean(input - v_states, dim=0)
+            self._h_bias.grad = - torch.mean(h0_means - h_means, dim=0)
+
+        if self._strategy == "PCD":
+            # update persistent visible states
+            
+            if v_samples is None:
+                self._v_samples[:N] = v_states
+        
+        return v_states, v_means, h_states, h_means
 
 
 
