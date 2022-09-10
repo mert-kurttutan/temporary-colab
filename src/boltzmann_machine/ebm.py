@@ -19,18 +19,3 @@ class EnergyBasedModel(DtypeMixin, nn.Module):
         """
         raise NotImplementedError('`free_energy` is not implemented')
 
-
-    def free_energy(self,v):
-        vbias_term = v.mv(self._v_bias)
-        wx_b = F.linear(v, self._weight, self._h_bias)
-
-        # exponentiate to get probabilities
-        hidden_term = wx_b.exp()
-        
-        # add one to account for h_i=0
-        # log and sum to sum over hidden states
-        # negative log-likelihood
-        NLL_ = - hidden_term.add(1).log().sum(1) - vbias_term
-
-        # mean over batch_dim
-        return NLL_.mean()

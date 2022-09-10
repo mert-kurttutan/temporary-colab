@@ -220,7 +220,7 @@ class BaseRBM(EnergyBasedModel):
         bit_i_idx = torch.randint(0, self.n_vis, (N,))
 
         # calculate free energy for the given bit configuration
-        fe_v = self.free_energy(v)
+        fe_v = self._free_energy(v)
 
         v_flip = v.detach().clone()
 
@@ -232,7 +232,7 @@ class BaseRBM(EnergyBasedModel):
 
 
         # calculate free energy with bit flipped
-        fe_v_flip = self.free_energy(v_flip)
+        fe_v_flip = self._free_energy(v_flip)
 
         # equivalent to e^(-FE(x_i)) / (e^(-FE(x_i)) + e^(-FE(x_{\i})))
         cost = torch.mean(self.n_vis * F.logsigmoid(fe_v_flip -
@@ -252,12 +252,11 @@ class BaseRBM(EnergyBasedModel):
         
         if self._strategy == "CD":
             v0_states = input
-        elif self._strategy == "PCD":
-            if self._v_samples is None:
-                self._v_samples = torch.rand(N, self.n_vis, device=self._weight.device)
 
-            
+        elif self._strategy == "PCD":
             if v_samples is None:
+                if self._v_samples is None:
+                    self._v_samples = torch.rand(N, self.n_vis, device=self._weight.device)
                 v0_states = self._v_samples[:N]
             else:
                 v0_states = v_samples
