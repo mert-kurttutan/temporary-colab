@@ -162,8 +162,8 @@ class BaseRBM(EnergyBasedModel):
 
     def _h_given_v(self, v):
 
-        x = self._propdown_multiplier * self._propup(v)
-        h_bias = self._propdown_multiplier * self._h_bias
+        x = self._propup_multiplier * self._propup(v)
+        h_bias = self._propup_multiplier * self._h_bias
 
         h_states = h_means = self._h_layer.activation(x, h_bias)
 

@@ -108,10 +108,3 @@ class GaussianRBM(BaseRBM):
         return fe
 
 
-def logit_mean(X):
-    p = np.mean(X, axis=0)
-    p = np.clip(p, 1e-7, 1. - 1e-7)
-    q = np.log(p / (1. - p))
-    return q
-
-
